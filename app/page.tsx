@@ -50,15 +50,20 @@ export default function Home() {
   const tambahWarga = async () => {
     if (!namaBaru) return;
 
-    const nomorBaru =
-      warga.length + 1;
+   const nomorTerbesar = Math.max(
+  ...warga.map((w) =>
+    Number(
+      w.id.replace("W", "")
+    )
+  ),
+  0
+);
 
-    const idBaru =
-      "W" +
-      nomorBaru
-        .toString()
-        .padStart(3, "0");
-
+const idBaru =
+  "W" +
+  (nomorTerbesar + 1)
+    .toString()
+    .padStart(3, "0");
     const dataBaru = {
       id: idBaru,
       nama: namaBaru,
