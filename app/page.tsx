@@ -19,6 +19,7 @@ import { Html5QrcodeScanner } from "html5-qrcode";
 
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
+import jsPDF from "jspdf";
 const bulanList = [
   "Januari",
   "Februari",
@@ -136,45 +137,47 @@ const hitungTunggakan = (
     .length;
 };
 
-const downloadExcel = () => {
-  const data = warga.map((item) => ({
-    ID: item.id,
-    Nama: item.nama,
-    Tunggakan: hitungTunggakan(
-      item.pembayaran
-    ),
-  }));
+ const downloadExcel = () => {
+  alert("Fungsi Excel belum dipasang ulang");
+};
+const downloadPDF = () => {
+  const pdf = new jsPDF();
 
-  const worksheet =
-    XLSX.utils.json_to_sheet(data);
+  pdf.setFontSize(18);
+  pdf.text("Laporan Kas RT 04", 20, 20);
 
-  const workbook =
-    XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(
-    workbook,
-    worksheet,
-    "Laporan Warga"
+  pdf.setFontSize(12);
+  pdf.text(
+    `Bulan Aktif: ${bulanAktif}`,
+    20,
+    35
   );
 
-  const excelBuffer =
-    XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array",
-    });
-
-  const file = new Blob(
-    [excelBuffer],
-    {
-      type:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    }
+  pdf.text(
+    `Total Warga: ${warga.length}`,
+    20,
+    45
   );
 
-  saveAs(
-    file,
-    "laporan-warga.xlsx"
+  pdf.text(
+    `Sudah Bayar: ${totalLunas}`,
+    20,
+    55
   );
+
+  pdf.text(
+    `Belum Bayar: ${totalBelum}`,
+    20,
+    65
+  );
+
+  pdf.text(
+    `Total Kas: Rp ${totalKas.toLocaleString("id-ID")}`,
+    20,
+    75
+  );
+
+  pdf.save("laporan-kas-rt.pdf");
 };
 
   useEffect(() => {
@@ -485,6 +488,13 @@ simpanPembayaran();
   className="bg-green-600 text-white px-4 py-2 rounded-xl mb-4"
 >
   📥 Download Excel
+</button>
+
+<button
+  onClick={downloadPDF}
+  className="bg-red-600 text-white px-4 py-2 rounded-xl mb-4 ml-2"
+>
+  📄 Download PDF
 </button>
 
 <input
