@@ -482,15 +482,7 @@ simpanPembayaran();
   className="w-full border p-3 rounded-xl mb-4"
 />
 
-<input
-  type="text"
-  placeholder="🔍 Cari warga..."
-  value={cari}
-  onChange={(e) =>
-    setCari(e.target.value)
-  }
-  className="w-full border p-3 rounded-xl mb-4"
-/>
+
             <div className="space-y-4">
 
               {warga
