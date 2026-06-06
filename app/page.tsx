@@ -531,13 +531,22 @@ simpanPembayaran();
                         </p>
 
                         <p>
-                          Tunggakan:
-                          {" "}
-                          {hitungTunggakan(
-                            item.pembayaran
-                          )}{" "}
-                          bulan
-                        </p>
+  Tunggakan:
+  {" "}
+  {hitungTunggakan(
+    item.pembayaran
+  )} bulan
+</p>
+
+<p className="text-red-600 font-bold">
+  Rp{" "}
+  {(
+    hitungTunggakan(
+      item.pembayaran
+    ) *
+    IURAN_PER_BULAN
+  ).toLocaleString("id-ID")}
+</p>
 
                       </div>
 
