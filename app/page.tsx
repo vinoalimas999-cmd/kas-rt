@@ -17,6 +17,13 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+} from "firebase/auth";
+
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import jsPDF from "jspdf";
@@ -50,6 +57,21 @@ export default function Home() {
   useState("");
  const [warga, setWarga] = useState<any[]>([]);
 
+ const auth = getAuth();
+
+const [email, setEmail] = useState("");
+const [password, setPassword] = useState("");
+const [user, setUser] = useState<any>(null);
+useEffect(() => {
+  const unsub = onAuthStateChanged(
+    auth,
+    (currentUser) => {
+      setUser(currentUser);
+    }
+  );
+
+  return () => unsub();
+}, []);
   // TAMBAH WARGA
   const tambahWarga = async () => {
     if (!namaBaru) return;
@@ -176,42 +198,44 @@ const hitungTunggakan = (
 const downloadPDF = () => {
   const pdf = new jsPDF();
 
-  pdf.setFontSize(18);
-  pdf.text("Laporan Kas RT 04", 20, 20);
-
-  pdf.setFontSize(12);
-  pdf.text(
-    `Bulan Aktif: ${bulanAktif}`,
-    20,
-    35
-  );
-
-  pdf.text(
-    `Total Warga: ${warga.length}`,
-    20,
-    45
-  );
-
-  pdf.text(
-    `Sudah Bayar: ${totalLunas}`,
-    20,
-    55
-  );
-
-  pdf.text(
-    `Belum Bayar: ${totalBelum}`,
-    20,
-    65
-  );
-
-  pdf.text(
-    `Total Kas: Rp ${totalKas.toLocaleString("id-ID")}`,
-    20,
-    75
-  );
-
+  // isi PDF...
   pdf.save("laporan-kas-rt.pdf");
 };
+
+const loginAdmin = async () => {
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
+
+    alert("Login berhasil");
+  } catch (error) {
+    alert("Email atau password salah");
+  }
+};
+
+const logoutAdmin = async () => {
+  await signOut(auth);
+};
+
+useEffect(() => {
+  const unsubscribe =
+    onSnapshot(
+      collection(db, "warga"),
+      (snapshot) => {
+        const dataFirebase =
+          snapshot.docs.map((d) =>
+            d.data()
+          );
+
+        setWarga(dataFirebase);
+      }
+    );
+
+  return () => unsubscribe();
+}, []);
 
   useEffect(() => {
   const unsubscribe =
@@ -231,6 +255,13 @@ const downloadPDF = () => {
 }, []);
 // SCANNER
 useEffect(() => {
+  if (!user) return;
+
+  const reader =
+    document.getElementById("reader");
+
+  if (!reader) return;
+
   const scanner =
     new Html5QrcodeScanner(
       "reader",
@@ -241,69 +272,19 @@ useEffect(() => {
       false
     );
 
-    scanner.render(
-      (decodedText) => {
-        setHasilScan(decodedText);
-
-        const simpanPembayaran = async () => {
-  const q = query(
-    collection(db, "warga"),
-    where("id", "==", decodedText)
+  scanner.render(
+    (decodedText) => {
+      // isi callback scan yang lama
+    },
+    (error) => {
+      console.log(error);
+    }
   );
 
-  const snapshot = await getDocs(q);
-
-  console.log("ID SCAN:", decodedText);
-console.log("JUMLAH DOKUMEN:", snapshot.size);
-
-if (!snapshot.empty) {
-  console.log(
-    "DOC ID:",
-    snapshot.docs[0].id
-  );
-
-  const docRef = doc(
-    db,
-    "warga",
-    snapshot.docs[0].id
-  );
-
-  await updateDoc(docRef, {
-    [`pembayaran.${bulanAktif}`]: true,
-  });
-
-  console.log("UPDATE BERHASIL");
-}
-};
-
-simpanPembayaran();
-        setWarga((prev) =>
-          prev.map((item) => {
-            if (
-              item.id === decodedText
-            ) {
-              return {
-                ...item,
-                pembayaran: {
-                  ...item.pembayaran,
-                  [bulanAktif]: true,
-                },
-              };
-            }
-
-            return item;
-          })
-        );
-      },
-      (error) => {
-        console.log(error);
-      }
-    );
-
-    return () => {
-      scanner.clear().catch(() => {});
-    };
-  }, [bulanAktif]);
+  return () => {
+    scanner.clear().catch(() => {});
+  };
+}, [bulanAktif, user]);
 
   // TOTAL BULAN INI
   const totalLunas =
@@ -321,6 +302,45 @@ simpanPembayaran();
   totalLunas *
   IURAN_PER_BULAN;
 
+  console.log("USER:", user);
+  if (!user) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="bg-white p-6 rounded-2xl shadow-lg w-80">
+        <h2 className="text-2xl font-bold mb-4">
+          Login Admin
+        </h2>
+
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
+          className="w-full border p-3 rounded-xl mb-3"
+        />
+
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
+          className="w-full border p-3 rounded-xl mb-3"
+        />
+
+        <button
+          onClick={loginAdmin}
+          className="bg-blue-600 text-white w-full p-3 rounded-xl"
+        >
+          Login
+        </button>
+      </div>
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
@@ -329,9 +349,18 @@ simpanPembayaran();
         {/* HEADER */}
         <div className="bg-white p-6 rounded-2xl shadow-lg mb-6">
 
-          <h1 className="text-4xl font-bold text-blue-600">
-            Kas RT 04 Bulan
-          </h1>
+         <div className="flex justify-between items-center">
+  <h1 className="text-4xl font-bold text-blue-600">
+    Kas RT 04 Bulan
+  </h1>
+
+  <button
+    onClick={logoutAdmin}
+    className="bg-red-600 text-white px-4 py-2 rounded-xl"
+  >
+    Logout
+  </button>
+</div>
 
           <p className="text-black   mt-2">
             Sistem scan QR iuran warga
