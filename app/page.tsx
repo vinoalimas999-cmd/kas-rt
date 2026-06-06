@@ -34,6 +34,7 @@ const bulanList = [
   "Desember",
 ];
 
+const IURAN_PER_BULAN = 10000;
 export default function Home() {
   const [bulanAktif, setBulanAktif] =
     useState("Januari");
@@ -280,6 +281,10 @@ simpanPembayaran();
   const totalBelum =
     warga.length - totalLunas;
 
+    const totalKas =
+  totalLunas *
+  IURAN_PER_BULAN;
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
 
@@ -324,6 +329,16 @@ simpanPembayaran();
               {bulanAktif}
             </p>
           </div>
+          <div className="bg-yellow-500 text-white p-5 rounded-2xl">
+  <h2>Total Kas</h2>
+
+  <p className="text-2xl font-bold">
+    Rp{" "}
+    {totalKas.toLocaleString(
+      "id-ID"
+    )}
+  </p>
+</div>
 
         </div>
 
