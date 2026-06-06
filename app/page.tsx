@@ -1,0 +1,544 @@
+"use client";
+
+import { db } from "../lib/firebase";
+
+import {
+  collection,
+  addDoc,
+  getDocs,
+  doc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+} from "firebase/firestore";
+import { useEffect, useState } from "react";
+import QRCode from "react-qr-code";
+import { Html5QrcodeScanner } from "html5-qrcode";
+
+const bulanList = [
+  "Januari",
+  "Februari",
+  "Maret",
+  "April",
+  "Mei",
+  "Juni",
+  "Juli",
+  "Agustus",
+  "September",
+  "Oktober",
+  "November",
+  "Desember",
+];
+
+export default function Home() {
+  const [bulanAktif, setBulanAktif] =
+    useState("Januari");
+
+  const [hasilScan, setHasilScan] =
+    useState("");
+
+  const [namaBaru, setNamaBaru] =
+    useState("");
+
+    const [cari, setCari] =
+  useState("");
+ const [warga, setWarga] = useState<any[]>([]);
+
+  // TAMBAH WARGA
+  const tambahWarga = async () => {
+    if (!namaBaru) return;
+
+    const nomorBaru =
+      warga.length + 1;
+
+    const idBaru =
+      "W" +
+      nomorBaru
+        .toString()
+        .padStart(3, "0");
+
+    const dataBaru = {
+      id: idBaru,
+      nama: namaBaru,
+      pembayaran: {
+        Januari: false,
+        Februari: false,
+        Maret: false,
+        April: false,
+        Mei: false,
+        Juni: false,
+        Juli: false,
+        Agustus: false,
+        September: false,
+        Oktober: false,
+        November: false,
+        Desember: false,
+      },
+    };
+
+    try {
+  await addDoc(
+    collection(db, "warga"),
+    dataBaru
+  );
+
+  setWarga([...warga, dataBaru]);
+
+  setNamaBaru("");
+
+  alert("Warga berhasil disimpan");
+} catch (error) {
+  console.error(error);
+  alert("Gagal menyimpan warga");
+}
+  };
+const hapusWarga = async (
+  id: string
+) => {
+  try {
+    const q = query(
+      collection(db, "warga"),
+      where("id", "==", id)
+    );
+
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      await deleteDoc(
+        doc(
+          db,
+          "warga",
+          snapshot.docs[0].id
+        )
+      );
+    }
+
+    setWarga(
+      warga.filter(
+        (item) => item.id !== id
+      )
+    );
+
+    alert("Warga berhasil dihapus");
+  } catch (error) {
+    console.error(error);
+    alert("Gagal menghapus warga");
+  }
+};
+ // HITUNG TUNGGAKAN
+const hitungTunggakan = (
+  pembayaran: any
+) => {
+  return Object.values(
+    pembayaran
+  ).filter((v) => v === false)
+    .length;
+};
+
+useEffect(() => {
+  const ambilData = async () => {
+    const snapshot = await getDocs(
+      collection(db, "warga")
+    );
+
+    const dataFirebase =
+      snapshot.docs.map((d) => d.data());
+
+    console.log(
+      "DATA FIREBASE:",
+      dataFirebase
+    );
+
+    setWarga(dataFirebase);
+  };
+
+  ambilData();
+}, []);
+
+// SCANNER
+useEffect(() => {
+  const scanner =
+    new Html5QrcodeScanner(
+      "reader",
+      {
+        fps: 5,
+        qrbox: 250,
+      },
+      false
+    );
+
+    scanner.render(
+      (decodedText) => {
+        setHasilScan(decodedText);
+
+        const simpanPembayaran = async () => {
+  const q = query(
+    collection(db, "warga"),
+    where("id", "==", decodedText)
+  );
+
+  const snapshot = await getDocs(q);
+
+  console.log("ID SCAN:", decodedText);
+console.log("JUMLAH DOKUMEN:", snapshot.size);
+
+if (!snapshot.empty) {
+  console.log(
+    "DOC ID:",
+    snapshot.docs[0].id
+  );
+
+  const docRef = doc(
+    db,
+    "warga",
+    snapshot.docs[0].id
+  );
+
+  await updateDoc(docRef, {
+    [`pembayaran.${bulanAktif}`]: true,
+  });
+
+  console.log("UPDATE BERHASIL");
+}
+};
+
+simpanPembayaran();
+        setWarga((prev) =>
+          prev.map((item) => {
+            if (
+              item.id === decodedText
+            ) {
+              return {
+                ...item,
+                pembayaran: {
+                  ...item.pembayaran,
+                  [bulanAktif]: true,
+                },
+              };
+            }
+
+            return item;
+          })
+        );
+      },
+      (error) => {
+        console.log(error);
+      }
+    );
+
+    return () => {
+      scanner.clear().catch(() => {});
+    };
+  }, [bulanAktif]);
+
+  // TOTAL BULAN INI
+  const totalLunas =
+  warga.filter(
+    (w) =>
+      w.pembayaran[
+        bulanAktif as keyof typeof w.pembayaran
+      ] === true
+  ).length;
+
+  const totalBelum =
+    warga.length - totalLunas;
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+
+      <div className="max-w-7xl mx-auto">
+
+        {/* HEADER */}
+        <div className="bg-white p-6 rounded-2xl shadow-lg mb-6">
+
+          <h1 className="text-4xl font-bold text-blue-600">
+            Kas RT 04 Bulan
+          </h1>
+
+          <p className="text-gray-500 mt-2">
+            Sistem scan QR iuran warga
+          </p>
+
+        </div>
+
+        {/* DASHBOARD */}
+        <div className="grid md:grid-cols-3 gap-4 mb-6">
+
+          <div className="bg-green-500 text-white p-5 rounded-2xl">
+            <h2>Sudah Bayar</h2>
+
+            <p className="text-3xl font-bold">
+              {totalLunas}
+            </p>
+          </div>
+
+          <div className="bg-red-500 text-white p-5 rounded-2xl">
+            <h2>Belum Bayar</h2>
+
+            <p className="text-3xl font-bold">
+              {totalBelum}
+            </p>
+          </div>
+
+          <div className="bg-blue-500 text-white p-5 rounded-2xl">
+            <h2>Bulan Aktif</h2>
+
+            <p className="text-2xl font-bold">
+              {bulanAktif}
+            </p>
+          </div>
+
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-6">
+
+          {/* KIRI */}
+          <div className="space-y-6">
+
+            {/* PILIH BULAN */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+
+              <h2 className="text-2xl font-bold mb-4">
+                Pilih Bulan
+              </h2>
+
+              <select
+                value={bulanAktif}
+                onChange={(e) =>
+                  setBulanAktif(
+                    e.target.value
+                  )
+                }
+                className="w-full border p-3 rounded-xl"
+              >
+                {bulanList.map(
+                  (bulan) => (
+                    <option
+                      key={bulan}
+                    >
+                      {bulan}
+                    </option>
+                  )
+                )}
+              </select>
+
+            </div>
+
+            {/* TAMBAH WARGA */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+
+              <h2 className="text-2xl font-bold mb-4">
+                Tambah Warga
+              </h2>
+
+              <div className="flex gap-2">
+
+                <input
+                  type="text"
+                  placeholder="Nama warga"
+                  value={namaBaru}
+                  onChange={(e) =>
+                    setNamaBaru(
+                      e.target.value
+                    )
+                  }
+                  className="flex-1 border p-3 rounded-xl"
+                />
+
+                <button
+                  onClick={
+                    tambahWarga
+                  }
+                  className="bg-blue-600 text-white px-5 rounded-xl"
+                >
+                  Tambah
+                </button>
+
+              </div>
+
+            </div>
+
+            {/* SCAN */}
+            <div className="bg-white p-6 rounded-2xl shadow-lg">
+
+              <h2 className="text-2xl font-bold mb-4">
+                Scan QR
+              </h2>
+
+              <div id="reader"></div>
+
+              <div className="mt-4 bg-green-100 p-4 rounded-xl">
+
+                <h2 className="font-bold">
+                  Hasil Scan
+                </h2>
+
+                <p>
+                  {hasilScan ||
+                    "Belum ada QR"}
+                </p>
+
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* DATA */}
+          <div className="bg-white p-6 rounded-2xl shadow-lg overflow-auto">
+
+<div className="bg-yellow-100 p-4 rounded-xl mb-4">
+  <h3 className="font-bold text-lg">
+    Rekap Tunggakan
+  </h3>
+
+<p className="text-sm text-gray-600">
+  Total Warga: {warga.length}
+</p>
+
+  {warga.map((item) => (
+    <div
+      key={item.id}
+      className="flex justify-between"
+    >
+      <span>{item.nama}</span>
+      <span
+  className={
+    hitungTunggakan(
+      item.pembayaran
+    ) === 0
+      ? "text-green-600 font-bold"
+      : hitungTunggakan(
+          item.pembayaran
+        ) <= 3
+      ? "text-yellow-600 font-bold"
+      : "text-red-600 font-bold"
+  }
+>
+  {hitungTunggakan(
+    item.pembayaran
+  )} bulan
+</span>
+    </div>
+  ))}
+</div>
+            <h2 className="text-2xl font-bold mb-6">
+              Data Warga
+            </h2>
+
+<input
+  type="text"
+  placeholder="🔍 Cari warga..."
+  value={cari}
+  onChange={(e) =>
+    setCari(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl mb-4"
+/>
+            <div className="space-y-4">
+
+              {warga
+  .filter((item) =>
+    item.nama
+      .toLowerCase()
+      .includes(cari.toLowerCase())
+  )
+  .map((item, index) => (
+                  <div
+                    key={index}
+                    className="border rounded-2xl p-4"
+                  >
+
+                    <div className="flex justify-between items-center">
+
+                      <div>
+
+                        <h2 className="font-bold text-xl">
+                          {
+                            item.nama
+                          }
+                        </h2>
+
+                        <p>
+                          ID:
+                          {" "}
+                          {
+                            item.id
+                          }
+                        </p>
+
+                        <p>
+                          Tunggakan:
+                          {" "}
+                          {hitungTunggakan(
+                            item.pembayaran
+                          )}{" "}
+                          bulan
+                        </p>
+
+                      </div>
+
+                      <QRCode
+                        value={
+                          item.id
+                        }
+                        size={80}
+                      />
+
+<button
+  onClick={() => {
+    if (
+      confirm(
+        `Yakin ingin menghapus ${item.nama}?`
+      )
+    ) {
+      hapusWarga(item.id);
+    }
+  }}
+  className="bg-red-500 text-white px-3 py-1 rounded-lg mt-2"
+>
+  🗑 Hapus
+</button>
+                    </div>
+
+                    {/* STATUS BULAN */}
+                    <div className="grid grid-cols-3 gap-2 mt-4">
+
+                      {bulanList.map(
+                        (bulan) => (
+                          <div
+                            key={bulan}
+                            className={`text-center p-2 rounded-lg text-sm ${
+  item.pembayaran[
+    bulan as keyof typeof item.pembayaran
+  ]
+    ? "bg-green-500 text-white"
+    : "bg-red-500 text-white"
+}`}
+                          >
+                            {bulan.substring(
+                              0,
+                              3
+                            )}
+                          </div>
+                        )
+                      )}
+
+                    </div>
+
+                  </div>
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}
