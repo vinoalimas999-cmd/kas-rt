@@ -17,6 +17,8 @@ import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 import { Html5QrcodeScanner } from "html5-qrcode";
 
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 const bulanList = [
   "Januari",
   "Februari",
@@ -51,11 +53,13 @@ export default function Home() {
     if (!namaBaru) return;
 
    const nomorTerbesar = Math.max(
-  ...warga.map((w) =>
-    Number(
-      w.id.replace("W", "")
-    )
-  ),
+  ...warga
+    .filter((w) => w.id)
+    .map((w) =>
+      Number(
+        w.id.replace("W", "")
+      )
+    ),
   0
 );
 
@@ -89,7 +93,6 @@ const idBaru =
     dataBaru
   );
 
-  setWarga([...warga, dataBaru]);
 
   setNamaBaru("");
 
@@ -110,22 +113,12 @@ const hapusWarga = async (
 
     const snapshot = await getDocs(q);
 
-    if (!snapshot.empty) {
-      await deleteDoc(
-        doc(
-          db,
-          "warga",
-          snapshot.docs[0].id
-        )
-      );
-    }
-
-    setWarga(
-      warga.filter(
-        (item) => item.id !== id
-      )
-    );
-
+    for (const d of snapshot.docs) {
+  await deleteDoc(
+    doc(db, "warga", d.id)
+  );
+}
+   
     alert("Warga berhasil dihapus");
   } catch (error) {
     console.error(error);
@@ -142,6 +135,46 @@ const hitungTunggakan = (
     .length;
 };
 
+const downloadExcel = () => {
+  const data = warga.map((item) => ({
+    ID: item.id,
+    Nama: item.nama,
+    Tunggakan: hitungTunggakan(
+      item.pembayaran
+    ),
+  }));
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(data);
+
+  const workbook =
+    XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Laporan Warga"
+  );
+
+  const excelBuffer =
+    XLSX.write(workbook, {
+      bookType: "xlsx",
+      type: "array",
+    });
+
+  const file = new Blob(
+    [excelBuffer],
+    {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+  );
+
+  saveAs(
+    file,
+    "laporan-warga.xlsx"
+  );
+};
 
   useEffect(() => {
   const unsubscribe =
@@ -429,8 +462,25 @@ simpanPembayaran();
   ))}
 </div>
             <h2 className="text-2xl font-bold mb-6">
-              Data Warga
-            </h2>
+  Data Warga
+</h2>
+
+<button
+  onClick={downloadExcel}
+  className="bg-green-600 text-white px-4 py-2 rounded-xl mb-4"
+>
+  📥 Download Excel
+</button>
+
+<input
+  type="text"
+  placeholder="🔍 Cari warga..."
+  value={cari}
+  onChange={(e) =>
+    setCari(e.target.value)
+  }
+  className="w-full border p-3 rounded-xl mb-4"
+/>
 
 <input
   type="text"
