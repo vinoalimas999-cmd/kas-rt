@@ -273,8 +273,29 @@ useEffect(() => {
     );
 
   scanner.render(
-    (decodedText) => {
-      // isi callback scan yang lama
+    async (decodedText) => {
+      setHasilScan(decodedText);
+
+      const q = query(
+        collection(db, "warga"),
+        where("id", "==", decodedText)
+      );
+
+      const snapshot =
+        await getDocs(q);
+
+      if (!snapshot.empty) {
+        const docRef = doc(
+          db,
+          "warga",
+          snapshot.docs[0].id
+        );
+
+        await updateDoc(docRef, {
+          [`pembayaran.${bulanAktif}`]:
+            true,
+        });
+      }
     },
     (error) => {
       console.log(error);
@@ -285,7 +306,6 @@ useEffect(() => {
     scanner.clear().catch(() => {});
   };
 }, [bulanAktif, user]);
-
   // TOTAL BULAN INI
   const totalLunas =
   warga.filter(
@@ -623,11 +643,9 @@ useEffect(() => {
                       </div>
 
                       <QRCode
-                        value={
-                          item.id
-                        }
-                        size={80}
-                      />
+  value={item.id}
+  size={80}
+/>
 
 <button
   onClick={() => {
