@@ -11,6 +11,7 @@ import {
   deleteDoc,
   query,
   where,
+  onSnapshot,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
@@ -136,26 +137,23 @@ const hitungTunggakan = (
     .length;
 };
 
-useEffect(() => {
-  const ambilData = async () => {
-    const snapshot = await getDocs(
-      collection(db, "warga")
+
+  useEffect(() => {
+  const unsubscribe =
+    onSnapshot(
+      collection(db, "warga"),
+      (snapshot) => {
+        const dataFirebase =
+          snapshot.docs.map((d) =>
+            d.data()
+          );
+
+        setWarga(dataFirebase);
+      }
     );
 
-    const dataFirebase =
-      snapshot.docs.map((d) => d.data());
-
-    console.log(
-      "DATA FIREBASE:",
-      dataFirebase
-    );
-
-    setWarga(dataFirebase);
-  };
-
-  ambilData();
+  return () => unsubscribe();
 }, []);
-
 // SCANNER
 useEffect(() => {
   const scanner =
@@ -256,7 +254,7 @@ simpanPembayaran();
             Kas RT 04 Bulan
           </h1>
 
-          <p className="text-gray-500 mt-2">
+          <p className="text-black   mt-2">
             Sistem scan QR iuran warga
           </p>
 
@@ -393,7 +391,7 @@ simpanPembayaran();
     Rekap Tunggakan
   </h3>
 
-<p className="text-sm text-gray-600">
+<p className="text-sm text-black font-medium">
   Total Warga: {warga.length}
 </p>
 
@@ -402,7 +400,9 @@ simpanPembayaran();
       key={item.id}
       className="flex justify-between"
     >
-      <span>{item.nama}</span>
+     <span className="text-black font-medium">
+  {item.nama}
+</span>
       <span
   className={
     hitungTunggakan(
