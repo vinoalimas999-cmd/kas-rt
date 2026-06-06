@@ -138,7 +138,40 @@ const hitungTunggakan = (
 };
 
  const downloadExcel = () => {
-  alert("Fungsi Excel belum dipasang ulang");
+  const data = warga.map((item) => ({
+    ID: item.id,
+    Nama: item.nama,
+    Tunggakan: hitungTunggakan(item.pembayaran),
+    Nominal: hitungTunggakan(item.pembayaran) * IURAN_PER_BULAN,
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(data);
+
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(
+    workbook,
+    worksheet,
+    "Laporan Warga"
+  );
+
+  const excelBuffer = XLSX.write(
+    workbook,
+    {
+      bookType: "xlsx",
+      type: "array",
+    }
+  );
+
+  const file = new Blob(
+    [excelBuffer],
+    {
+      type:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }
+  );
+
+  saveAs(file, "laporan-warga.xlsx");
 };
 const downloadPDF = () => {
   const pdf = new jsPDF();
